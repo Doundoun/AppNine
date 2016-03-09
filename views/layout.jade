@@ -1,0 +1,16 @@
+doctype
+html
+  head
+    title #{title} - My Site
+    link(rel='stylesheet', href='/stylesheets/style.css')
+    script(type='text/javascript', src='/socket.io/socket.io.js')
+    script(type='text/javascript', src='/doctalk.js')
+  body
+    header
+      h1 Current
+    .container
+      .main-content
+        block content
+      .sidebar
+        h2 Available documents:
+        block sidebar

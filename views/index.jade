@@ -1,0 +1,21 @@
+extend layout
+block content
+  div(id="status")
+    p
+      | not connected...
+    p
+  div(id="Template")
+    form(action="/upload", method="POST", enctype="multipart/form-data")
+      input(type="file", name="templateFile", id="fileSelect", value="File...", accept=mimetypes)
+      input(type="hidden" id="customerID" name="customerID" value="1234")
+      p
+        input(type="submit", value="Upload")
+block sidebar
+  div(id="fileList")
+    p
+      ul
+        #values
+        each val in values
+          li
+            a(href =val) #{val}
+            

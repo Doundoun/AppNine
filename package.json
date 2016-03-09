@@ -1,0 +1,27 @@
+{
+  "name": "nDocxus",
+  "version": "0.0.1",
+  "description": "Office Word Merge",
+  "main": "ndocxus.js",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jan Abrahamse",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.13.3",
+	"archiver": "latest",
+	"unoconv": "latest",
+	"xmldom": "latest",
+	"unzip": "latest",
+	"concat-stream": "latest",
+	"streamifier": "latest",
+	"jade":"latest",
+	"stylus":"latest",
+	"nib":"latest",
+	"multer":"latest",
+	"socket.io": "latest",
+	"mkdirp": "latest"
+	}
+}
