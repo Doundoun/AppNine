@@ -1,19 +1,19 @@
 var express     = require('express'),
     app         = express(),
     port        = process.env.PORT || 3000,
-	fs          = require('fs'),
+    fs          = require('fs'),
     path        = require('path'),
     fH          = require('./fileHandler'),
     streamifier = require('streamifier'),
     stylus      = require('stylus'),
-	nib         = require('nib')
-	multer      = require("multer"),
+    nib         = require('nib')
+    multer      = require("multer"),
     docxbuilder = require('./docxbuilder'),
     unoconv     = require('unoconv'),
-	loPort      = require('./loPort'),
+    loPort      = require('./loPort'),
     server      = require('http').createServer(app),
     io          = require('socket.io').listen(server),
-	mkdir       = require('mkdirp');
+    mkdir       = require('mkdirp');
 //	ss          = require('socket.io-stream');
     
 var allowCrossDomain = function(req, res, next) {
@@ -109,15 +109,16 @@ var pushClientStatus = function (customerID) {
    });
 }
 
+io.use(function (socket, next) {
+  var handshake = socket.handshake;
+  console.log(handshake.query);
+  socket.customerID = handshake.query.customerID;
+  customerSockets[handshake.query.customerID] = socket;
+  next();
+});
+
 io.sockets.on('connection', function (socket) {
-	//console.log('connection: ' + socket.id);
-    socket.emit('handshake', { message: 'Ready...'}, function(customerID) {
-        console.log('customerID uit handshake: ' + customerID);
-        socket.customerID = customerID;
-        customerSockets[customerID] = socket;
-		//Directory-list doorgeven
-		pushClientStatus(customerID);
-    });
+	pushClientStatus(socket.customerID);
     
     socket.on('disconnect', function() {
         console.log(socket.customerID + ' has disconnected');
@@ -194,7 +195,9 @@ router.post('/multi', function (req, res) {
 		  
 		  for (i=0; i < command.mergeList.length; i++)
 		  {
-            customerSockets[command.customerID].emit('message', {message:"Processing " + (i+1) + ' of ' + command.mergeList.length});
+            if (customerSockets[command.customerID]) {
+                customerSockets[command.customerID].emit('message', {message:"Processing " + (i+1) + ' of ' + command.mergeList.length});
+            }
 			mergeList = command.mergeList[i];
             filePath = './b/' + command.customerID + '/Templates/templateFile';
 
@@ -210,7 +213,7 @@ router.post('/multi', function (req, res) {
 					createFileStream(function(fileStream) {
  				      filePipe = archive.pipe(fileStream);
                       filePipe.on('finish', function() {
-	                    pushClientStatus(command.customerID);
+	                    if (customerSockets[command.customerID]) {pushClientStatus(command.customerID);}
                       });
 					});
 				  }
@@ -220,7 +223,9 @@ router.post('/multi', function (req, res) {
                         if (err)
                         {
                            console.log('PDF Conversion error, Customer: ' + command.customerID + '; ' + err);
-                           customerSockets[command.customerID].emit('message', {message:"Conversion error"});
+                           if (customerSockets[command.customerID]) {
+                               customerSockets[command.customerID].emit('message', {message:"Conversion error"});
+                           }
                         }
                         else
                         {
@@ -228,7 +233,9 @@ router.post('/multi', function (req, res) {
   	                        // Pipe result-buffer met PDF naar file
 	                        filePipe = streamifier.createReadStream(result).pipe(fileStream);  
                             filePipe.on('finish', function() {
-	                        pushClientStatus(command.customerID);
+	                        if (customerSockets[command.customerID]) {
+                                pushClientStatus(command.customerID);
+                            }
                             });
 						  });
                         }
@@ -287,13 +294,11 @@ router.post('/docx', function(req, res) {
             else
             {
               setHeaders(function() {
-                customerSockets[command.customerID].emit('message', {message:"Processing..."});
                 if ( (!command.mergeList[0].outputformat) || command.mergeList[0].outputformat == 'DOCX')
 		        {
 				  // Pipe archive-stream naar http res
  		          var responsePipe = archive.pipe(res);
 			      responsePipe.on('finish', function() {
-                    customerSockets[command.customerID].emit('message', {message:"Ready..."});
                     res.end();
                   });
 			    }
@@ -303,7 +308,6 @@ router.post('/docx', function(req, res) {
 	                // Pipe result-buffer met PDF naar http res
 	                var responsePipe = streamifier.createReadStream(result).pipe(res);  
  	                responsePipe.on('finish', function() {
-                      customerSockets[command.customerID].emit('message', {message:"Ready..."});
                       res.end();
                     });
 			      });
@@ -363,14 +367,21 @@ router.post('/upload', upload, function (req, res, next) {
 	 else
        i++;
    }
+   var customerID = req.body.customerID;
+   
    if (found == true)
    {
      fH.mv(req.file, 'b/' + req.body.customerID  + '/Templates', req.file.filename);
-     customerSockets[req.body.customerID].emit('message', {message:"Ready..."});
+     if (customerSockets[customerID]) {
+         customerSockets[customerID].emit('message', {message:"File uploaded..."});
+
+     }
    }
    else
    {
-     customerSockets[req.body.customerID].emit('message', {message:"Sorry, wrong filetype..."});
+     if (customerSockets[customerID]) {
+        customerSockets[customerID].emit('message', {message:"Sorry, wrong filetype..."});
+     }
    }
 });
 
