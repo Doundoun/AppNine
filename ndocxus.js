@@ -14,7 +14,7 @@ var express     = require('express'),
     server      = require('http').createServer(app),
     io          = require('socket.io').listen(server),
     mkdir       = require('mkdirp');
-//	ss          = require('socket.io-stream');
+//    ss          = require('socket.io-stream');
     
 var allowCrossDomain = function(req, res, next) {
     if ( req.method == 'OPTIONS' ) {
@@ -22,7 +22,7 @@ var allowCrossDomain = function(req, res, next) {
       res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Disposition, Content-Type, Authorization, Content-Length, X-Requested-With');
       res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
-	  next();
+      next();
     }
     else {
       next();
@@ -56,7 +56,7 @@ router.use(allowCrossDomain);
 
 if (process.platform != 'win32')  // Ik krijg unoconv op Windows niet aan de praat
    {
-	  // Start een aantal malen een listener voor libreOffice/unoconv voor parallelliteit
+      // Start een aantal malen een listener voor libreOffice/unoconv voor parallelliteit
       unoconv.listen({port:2002});
 //      unoconv.listen({port:2003});
    }
@@ -65,11 +65,11 @@ router.get('/', function(req, res) {
   var lijst = [];
 
   res.render('index',
-	{ title : 'nDocxus Templating Engine'
-	, mimetypes : mimetypes
-	, values : lijst
-	}
-	)
+    { title : 'nDocxus Templating Engine'
+    , mimetypes : mimetypes
+    , values : lijst
+    }
+    )
 });
 
 var customerSockets = {}
@@ -80,7 +80,7 @@ var createDirList = function (customerID, callback) {
        fs.readdir(p, function (err, files) {
           if (err) {
             console.log(err.message);
-			callback({message:'Please load a docx template...'});
+            callback({message:'Please load a docx template...'});
           }
           else
           {
@@ -99,13 +99,13 @@ var createDirList = function (customerID, callback) {
 
 var pushClientStatus = function (customerID) {
    createDirList(customerID, function(err,dirList) {
-	 if (err) {
+     if (err) {
        customerSockets[customerID].emit('message', err);
-	 }
-	 else {
+     }
+     else {
        var JSONdirlist = JSON.parse('{"message": "Ready...","dirlist":' + JSON.stringify(dirList) + '}');
        customerSockets[customerID].emit('dirlist', JSONdirlist);
-	 }
+     }
    });
 }
 
@@ -118,7 +118,7 @@ io.use(function (socket, next) {
 });
 
 io.sockets.on('connection', function (socket) {
-	pushClientStatus(socket.customerID);
+    pushClientStatus(socket.customerID);
     
     socket.on('disconnect', function() {
         console.log(socket.customerID + ' has disconnected');
@@ -131,95 +131,92 @@ var convertPDF = function(archive, docID, callback) {
     //  console.log('Afhandeling PDF');
     if (docID)
     { 
-	  tmpFile = './tmp/' + docID + '.docx';
-	}
-	else
-	{
-	  tmpFile = './tmp/tmp.docx';
-	}
-	// Pipe archive-stream naar temporary (docx) file
-	docxFile = fs.createWriteStream(tmpFile);
-	var filePipe = archive.pipe(docxFile);
-	filePipe.on('finish', function() {
-	  // Converteer docx naar PDF
-	  var unoconvOptions = JSON.parse('{"port":"2002"}');
+      tmpFile = './tmp/' + docID + '.docx';
+    }
+    else
+    {
+      tmpFile = './tmp/tmp.docx';
+    }
+    // Pipe archive-stream naar temporary (docx) file
+    docxFile = fs.createWriteStream(tmpFile);
+    var filePipe = archive.pipe(docxFile);
+    filePipe.on('finish', function() {
+      // Converteer docx naar PDF
+      var unoconvOptions = JSON.parse('{"port":"2002"}');
       try
       {
- 	     unoconv.convert(tmpFile, 'pdf', unoconvOptions, function (err, result) {
-		    callback(err, result);
+          unoconv.convert(tmpFile, 'pdf', unoconvOptions, function (err, result) {
+            callback(err, result);
             fs.unlink(tmpFile);
- 	     });
+          });
       }
       catch (e)
       {
           callback(e, null);
       }
-	});
+    });
 }
 
 router.post('/multi', function (req, res) {
   //console.log('multi request...');
     function endInError(err) {
         res.status(500);
-		console.log('Fout: ' + err.message);
+        console.log('Fout: ' + err.message);
         res.end(err.message);
-	}
+    }
 
-	var body = "";
+    var body = "";
 
-	req.on('data', function(data) {
+    req.on('data', function(data) {
        body += data;
-	});
-	
-	req.on('end', function() {
+    });
+    
+    req.on('end', function() {
       
-	  var command;
+      var command;
 
-	  try
- 	  { //console.log('--' + body + '--');
-	  	  command = JSON.parse(body.trim());
-		  
+      try
+       { //console.log('--' + body + '--');
+          command = JSON.parse(body.trim());
+
           res.setHeader('Access-Control-Allow-Origin', '*');
-  	      res.setHeader('Content-Type', 'text/plain');
-		  res.status(200);
+            res.setHeader('Content-Type', 'text/plain');
+          res.status(200);
           res.end();
-		  
-          var mergeList
-            , filePath
-            , filePipe;
-		  
-		  var createFileStream = function(callback) {
- 	        var fileStream = fs.createWriteStream('./b/' + command.customerID + '/' + mergeList.Factuurnummer + '.' + mergeList.outputformat.toLowerCase());
-			return callback(fileStream);
-		  }
-		  
-		  for (i=0; i < command.mergeList.length; i++)
-		  {
+          
+          var createFileStream = function(factuurNummer, extensie, callback) {
+              console.log('Filestream: ' + factuurNummer)
+             var fileStream = fs.createWriteStream('./b/' + command.customerID + '/' + factuurNummer + '.' + extensie.toLowerCase());
+            return callback(fileStream);
+          }
+          
+          var filePath = './b/' + command.customerID + '/Templates/templateFile';
+
+          for (i=0; i < command.mergeList.length; i++)
+          {
             if (customerSockets[command.customerID]) {
                 customerSockets[command.customerID].emit('message', {message:"Processing " + (i+1) + ' of ' + command.mergeList.length});
             }
-			mergeList = command.mergeList[i];
-            filePath = './b/' + command.customerID + '/Templates/templateFile';
 
               //    console.log(JSON.stringify(command.mergeList));
-	          docxbuilder.build(filePath, mergeList, function(err,archive) {
+              docxbuilder.build(filePath, command.mergeList[i], function(err, fileBaseName, archive) {
                 if (err) {
                   endInError(err);
                 }
                 else
                 {
-                  if ( (!command.mergeList[0].outputformat) || command.mergeList[0].outputformat == 'DOCX')
-				  {
-					createFileStream(function(fileStream) {
- 				      filePipe = archive.pipe(fileStream);
+                  if ( (!command.mergeList[i].outputformat) || command.mergeList[i].outputformat == 'DOCX')
+                  {
+                    createFileStream(fileBaseName, command.mergeList[i].outputformat, function(fileStream) {
+                       var filePipe = archive.pipe(fileStream);
                       filePipe.on('finish', function() {
-	                    if (customerSockets[command.customerID]) {pushClientStatus(command.customerID);}
+                        if (customerSockets[command.customerID]) {pushClientStatus(command.customerID);}
                       });
-					});
-				  }
-				  else if (command.mergeList[0].outputformat == 'PDF')
-				  {  //Converteer archive-stream naar een PDF
-					convertPDF(archive, command.customerID, function(err, result) {
+                    });
+                  }
+                  else if (command.mergeList[i].outputformat == 'PDF')
+                  {  //Converteer archive-stream naar een PDF
+                    convertPDF(archive, fileBaseName, function(err, result) {
                         if (err)
                         {
                            console.log('PDF Conversion error, Customer: ' + command.customerID + '; ' + err);
@@ -229,25 +226,25 @@ router.post('/multi', function (req, res) {
                         }
                         else
                         {
-					      createFileStream(function(fileStream) {
-  	                        // Pipe result-buffer met PDF naar file
-	                        filePipe = streamifier.createReadStream(result).pipe(fileStream);  
+                          createFileStream(fileBaseName, command.mergeList[i].outputformat, function(fileStream) {
+                              // Pipe result-buffer met PDF naar file
+                            var filePipe = streamifier.createReadStream(result).pipe(fileStream);  
                             filePipe.on('finish', function() {
-	                        if (customerSockets[command.customerID]) {
+                            if (customerSockets[command.customerID]) {
                                 pushClientStatus(command.customerID);
                             }
                             });
-						  });
+                          });
                         }
-					});
-				  } 
+                    });
+                  } 
                 }
               });
-		  }
-	 }
-	 catch(err) {
+          }
+     }
+     catch(err) {
          endInError(err);
-	  }
+      }
    });
 });
    
@@ -255,39 +252,39 @@ router.post('/docx', function(req, res) {
 
   //console.log('docx request...');
     function endInError(err) {
-		console.log('Fout: ' + err.message);
-  	//    res.setHeader('Content-Type', 'text/plain');
+        console.log('Fout: ' + err.message);
+      //    res.setHeader('Content-Type', 'text/plain');
         res.status(500);
         res.end(err.message);
-	}
+    }
 
-	var body = "";
+    var body = "";
 
-	req.on('data', function(data) {
+    req.on('data', function(data) {
        body += data;
-	});
-	
-	req.on('end', function() {
+    });
+    
+    req.on('end', function() {
       var command
         , filePath;
 
       var setHeaders = function (callback) {
          res.setHeader('Access-Control-Allow-Origin', '*');
-      	 res.setHeader('Content-Type', 'application/octet-stream');
-	     res.setHeader('Transfer-Encoding', 'chunked');
-	     //res.setHeader('Content-Length', docout.length);
+           res.setHeader('Content-Type', 'application/octet-stream');
+         res.setHeader('Transfer-Encoding', 'chunked');
+         //res.setHeader('Content-Length', docout.length);
          res.setHeader('Content-Disposition', 'attachment; output.docx');
          return callback();
       };
       
-	  try
- 	  { //console.log('--' + body + '--');
-	  	command = JSON.parse(body.trim());
+      try
+       { //console.log('--' + body + '--');
+          command = JSON.parse(body.trim());
 
         filePath = './b/' + command.customerID + '/Templates/templateFile';
-		
+        
         docxbuilder.build(filePath, command.mergeList[0], function(err,archive) {
-			//   console.log('Probeer te zenden...');
+            //   console.log('Probeer te zenden...');
             if (err) {
               endInError(err);
             }
@@ -295,36 +292,37 @@ router.post('/docx', function(req, res) {
             {
               setHeaders(function() {
                 if ( (!command.mergeList[0].outputformat) || command.mergeList[0].outputformat == 'DOCX')
-		        {
-				  // Pipe archive-stream naar http res
- 		          var responsePipe = archive.pipe(res);
-			      responsePipe.on('finish', function() {
-                    res.end();
-                  });
-			    }
-			    else if (command.mergeList[0].outputformat == 'PDF')
-			    {  //Converteer archive-stream naar een PDF
-			      convertPDF(archive, command.customerID, function(result) {
-	                // Pipe result-buffer met PDF naar http res
-	                var responsePipe = streamifier.createReadStream(result).pipe(res);  
- 	                responsePipe.on('finish', function() {
+                {
+                  // Pipe archive-stream naar http res
+                   var responsePipe = archive.pipe(res);
+                   responsePipe.on('finish', function() {
+                      res.end();
+                   });
+                }
+                else if (command.mergeList[0].outputformat == 'PDF')
+                {  //Converteer archive-stream naar een PDF
+                  convertPDF(archive, command.customerID, function(result) {
+                    // Pipe result-buffer met PDF naar http res
+                    var responsePipe = streamifier.createReadStream(result).pipe(res);  
+                     responsePipe.on('finish', function() {
                       res.end();
                     });
-			      });
-			    }
+                  });
+                }
               });
             }
-		});
-	  }
-	  catch(err) {
+        });
+      }
+      catch(err) {
          endInError(err);
-	  }
+      }
 
   });
 });
 
 router.get('/b/*', function(req,res) {
-  var path = '.' + req.url;
+    console.log(encodeURI(req.url));
+  var path = '.' + encodeURI(req.url);
   res.download(path, function() {
       res.end();
 //      fs.unlink(path, function(err) {
@@ -362,9 +360,9 @@ router.post('/upload', upload, function (req, res, next) {
       found = true;
     // res.redirect(req.header('Referer') || '/', function() {
     //    customerSockets[req.body.customerID].emit('message', {message:"Ready..."});
-	// });
+    // });
      }
-	 else
+     else
        i++;
    }
    var customerID = req.body.customerID;
@@ -374,7 +372,6 @@ router.post('/upload', upload, function (req, res, next) {
      fH.mv(req.file, 'b/' + req.body.customerID  + '/Templates', req.file.filename);
      if (customerSockets[customerID]) {
          customerSockets[customerID].emit('message', {message:"File uploaded..."});
-
      }
    }
    else
