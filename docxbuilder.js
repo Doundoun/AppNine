@@ -83,7 +83,10 @@ exports.build = function(filePath, mergeList, callback) {
 
 		 zipStream.on('close', function() { 
 		    archive.finalize();
-			callback(null,archive);
+            var baseFileName = mergeList.Achternaam;
+            if (mergeList.Voornaam) {baseFileName += mergeList.Voornaam + ' ';}
+            if (mergeList.email) {baseFileName =+ mergeList.email}
+			return callback(null, baseFileName , archive);
 		 });
     }
    catch(err)
